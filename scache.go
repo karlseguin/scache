@@ -64,6 +64,42 @@ func (sc *Scache) Get(key string) interface{} {
 	return nil
 }
 
+func (sc *Scache) Fetch(key string, miss func() interface{}) interface{} {
+	bucket := sc.getBucket(key)
+	item := bucket.Get(key)
+	if item != nil && item.Expires.After(time.Now()) {
+		return item.Value
+	}
+	value := miss()
+	if value != nil {
+		sc.Set(key, value)
+	}
+	return value
+}
+
+func (sc *Scache) Set(key string, value interface{}) {
+	item := &Item{
+		Expires: time.Now().Add(sc.ttl),
+		Value:   value,
+	}
+	if sc.getBucket(key).Set(key, item) == true {
+		if atomic.AddInt32(&sc.count, 1) >= sc.max && atomic.CompareAndSwapUint32(&sc.gcing, 0, 1) {
+			go sc.gc()
+		}
+	}
+}
+
+func (sc *Scache) gc() {
+	defer atomic.StoreUint32(&sc.gcing, 0)
+	freed := int32(0)
+	for i := 0; i < BUCKET_COUNT; i++ {
+		if sc.buckets[i].gc() {
+			freed++
+		}
+	}
+	atomic.AddInt32(&sc.count, -freed)
+}
+
 func (b *Bucket) Get(key string) *Item {
 	b.RLock()
 	value := b.lookup[key]
@@ -79,35 +115,12 @@ func (b *Bucket) Remove(key string) bool {
 	return exists
 }
 
-func (sc *Scache) Set(key string, value interface{}) {
-	item := &Item{
-		Expires: time.Now().Add(sc.ttl),
-		Value:   value,
-	}
-	if sc.getBucket(key).Set(key, item) == true {
-		if atomic.AddInt32(&sc.count, 1) >= sc.max && atomic.CompareAndSwapUint32(&sc.gcing, 0, 1) {
-			go sc.gc()
-		}
-	}
-}
-
 func (b *Bucket) Set(key string, item *Item) bool {
 	b.Lock()
 	_, exists := b.lookup[key]
 	b.lookup[key] = item
 	b.Unlock()
 	return !exists
-}
-
-func (sc *Scache) gc() {
-	defer atomic.StoreUint32(&sc.gcing, 0)
-	freed := int32(0)
-	for i := 0; i < BUCKET_COUNT; i++ {
-		if sc.buckets[i].gc() {
-			freed++
-		}
-	}
-	atomic.AddInt32(&sc.count, -freed)
 }
 
 func (b *Bucket) gc() bool {
@@ -123,9 +136,7 @@ func (b *Bucket) gc() bool {
 				break
 			}
 		}
-
-		visited++
-		if visited == 10 {
+		if visited++; visited == 10 {
 			break
 		}
 	}

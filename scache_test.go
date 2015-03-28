@@ -25,6 +25,24 @@ func (_ ScacheTests) GetsAValue() {
 	Expect(cache.Get("it's over")).To.Equal(9000)
 }
 
+func (_ ScacheTests) FetchesAMiss() {
+	cache := New(10, time.Minute)
+	value := cache.Fetch("leto", func() interface{} {
+		return "atreides"
+	})
+	Expect(value).To.Equal("atreides")
+	Expect(cache.Get("leto")).To.Equal("atreides")
+}
+
+func (_ ScacheTests) FetchesAHit() {
+	cache := New(10, time.Minute)
+	cache.Set("leto", "worm")
+	value := cache.Fetch("leto", func() interface{} {
+		return nil
+	})
+	Expect(value).To.Equal("worm")
+}
+
 func (_ ScacheTests) FreesSpace() {
 	cache := New(100, time.Minute)
 	for i := 0; i < 100; i++ {
