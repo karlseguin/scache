@@ -64,13 +64,13 @@ func (sc *Scache) Get(key string) interface{} {
 	return nil
 }
 
-func (sc *Scache) Fetch(key string, miss func() interface{}) interface{} {
+func (sc *Scache) Fetch(key string, miss func(key string) interface{}) interface{} {
 	bucket := sc.getBucket(key)
 	item := bucket.Get(key)
 	if item != nil && item.Expires.After(time.Now()) {
 		return item.Value
 	}
-	value := miss()
+	value := miss(key)
 	if value != nil {
 		sc.Set(key, value)
 	}

@@ -27,17 +27,17 @@ func (_ ScacheTests) GetsAValue() {
 
 func (_ ScacheTests) FetchesAMiss() {
 	cache := New(10, time.Minute)
-	value := cache.Fetch("leto", func() interface{} {
-		return "atreides"
+	value := cache.Fetch("leto", func(key string) interface{} {
+		return key + " atreides"
 	})
-	Expect(value).To.Equal("atreides")
-	Expect(cache.Get("leto")).To.Equal("atreides")
+	Expect(value).To.Equal("leto atreides")
+	Expect(cache.Get("leto")).To.Equal("leto atreides")
 }
 
 func (_ ScacheTests) FetchesAHit() {
 	cache := New(10, time.Minute)
 	cache.Set("leto", "worm")
-	value := cache.Fetch("leto", func() interface{} {
+	value := cache.Fetch("leto", func(key string) interface{} {
 		return nil
 	})
 	Expect(value).To.Equal("worm")
