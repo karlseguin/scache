@@ -1,6 +1,7 @@
 package scache
 
 import (
+	"errors"
 	. "github.com/karlseguin/expect"
 	"strconv"
 	"testing"
@@ -27,19 +28,31 @@ func (_ ScacheTests) GetsAValue() {
 
 func (_ ScacheTests) FetchesAMiss() {
 	cache := New(10, time.Minute)
-	value := cache.Fetch("leto", func(key string) interface{} {
-		return key + " atreides"
+	value, err := cache.Fetch("leto", func(key string) (interface{}, error) {
+		return key + " atreides", nil
 	})
+	Expect(err).To.Equal(nil)
 	Expect(value).To.Equal("leto atreides")
 	Expect(cache.Get("leto")).To.Equal("leto atreides")
+}
+
+func (_ ScacheTests) FetchesAnError() {
+	cache := New(10, time.Minute)
+	value, err := cache.Fetch("leto", func(key string) (interface{}, error) {
+		return "", errors.New("X")
+	})
+	Expect(err.Error()).To.Equal("X")
+	Expect(value).To.Equal(nil)
+	Expect(cache.Get("leto")).To.Equal(nil)
 }
 
 func (_ ScacheTests) FetchesAHit() {
 	cache := New(10, time.Minute)
 	cache.Set("leto", "worm")
-	value := cache.Fetch("leto", func(key string) interface{} {
-		return nil
+	value, err := cache.Fetch("leto", func(key string) (interface{}, error) {
+		return nil, nil
 	})
+	Expect(err).To.Equal(nil)
 	Expect(value).To.Equal("worm")
 }
 
