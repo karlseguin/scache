@@ -92,6 +92,15 @@ func (sc *Scache) Set(key string, value interface{}) {
 	}
 }
 
+func (sc *Scache) Remove(key string) bool {
+	bucket := sc.getBucket(key)
+	if bucket.Remove(key) == true {
+		atomic.AddInt32(&sc.count, -1)
+		return true
+	}
+	return false
+}
+
 func (sc *Scache) gc() {
 	defer atomic.StoreUint32(&sc.gcing, 0)
 	freed := int32(0)

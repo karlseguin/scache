@@ -2,10 +2,11 @@ package scache
 
 import (
 	"errors"
-	. "github.com/karlseguin/expect"
 	"strconv"
 	"testing"
 	"time"
+
+	. "github.com/karlseguin/expect"
 )
 
 type ScacheTests struct {
@@ -83,4 +84,19 @@ func (_ ScacheTests) GCWillRunTwice() {
 	time.Sleep(time.Millisecond)
 	Expect(cache.Get("overflow")).To.Equal("wow2")
 	Expect(cache.Get("1")).To.Equal(nil)
+}
+
+func (_ ScacheTests) RemoveNoopsIfNotInCache() {
+	cache := New(10, time.Minute)
+	cache.Set("leto", "worm")
+	Expect(cache.Remove("paul")).To.Equal(false)
+}
+
+func (_ ScacheTests) RemoveRemovesTheItem() {
+	cache := New(10, time.Minute)
+	cache.Set("leto", "worm")
+	cache.Set("paul", "blind")
+	Expect(cache.Remove("paul")).To.Equal(true)
+	Expect(cache.Get("paul")).To.Equal(nil)
+	Expect(cache.Get("leto")).To.Equal("worm")
 }
