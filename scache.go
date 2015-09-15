@@ -101,6 +101,16 @@ func (sc *Scache) Remove(key string) bool {
 	return false
 }
 
+func (sc *Scache) Clear() {
+	for _, bucket := range sc.buckets {
+		lookup := make(map[string]*Item)
+		bucket.Lock()
+		bucket.count = 0
+		bucket.lookup = lookup
+		bucket.Unlock()
+	}
+}
+
 func (sc *Scache) gc() {
 	defer atomic.StoreUint32(&sc.gcing, 0)
 	freed := int32(0)
